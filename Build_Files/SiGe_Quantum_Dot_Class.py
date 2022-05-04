@@ -6,6 +6,7 @@ import sys
 import os
 import numpy as np
 import matplotlib.pyplot as plt
+from mpl_toolkits import mplot3d
 import parameters as par
 import scipy.linalg as linalg
 import scipy.sparse as Spar
@@ -24,11 +25,11 @@ class SiGe_Quantum_Dot:
         self.b = self.a_par/np.sqrt(2.)                     # in-plane lattice constant (in Angstroms) of square lattice for each atomic layer
 
         ### Calculate the number of sites in each direction, layer, and total
-        self.Nx = int(Lx_targ/self.b) - 1       # number of lattice sites in x-direction for each layer
-        self.Ny = int(Ly_targ/self.b) - 1       # number of lattice sites in y-direction for each layer
+        self.Nx = int(Lx_targ/self.b)       # number of lattice sites in x-direction for each layer
+        self.Ny = int(Ly_targ/self.b)       # number of lattice sites in y-direction for each layer
         self.N_layer = self.Nx * self.Ny        # number of lattice sites in each layer
-        self.Lx = (self.Nx + 1) * self.b
-        self.Ly = (self.Ny + 1) * self.b
+        self.Lx = (self.Nx) * self.b
+        self.Ly = (self.Ny) * self.b
 
         ### Sub object to handle the generation of Ge profile
         self.Ge_Profile = SGQDGPSC.GeProfile_subObject(self)
@@ -75,16 +76,16 @@ class SiGe_Quantum_Dot:
 
             ### set lattice shift in xy-plane for the current (mth) atomic layer
             if m % 4 == 0:
-                x_sm = -self.Lx/2. - self.b/2.
-                y_sm = -self.Ly/2. - self.b/2.
+                x_sm = -self.Lx/2.
+                y_sm = -self.Ly/2.
             elif m % 4 == 1:
                 x_sm = -self.Lx/2. + self.b/2.
-                y_sm = -self.Ly/2. - self.b/2.
+                y_sm = -self.Ly/2.
             elif m % 4 == 2:
                 x_sm = -self.Lx/2. + self.b/2.
                 y_sm = -self.Ly/2. + self.b/2.
             elif m % 4 == 3:
-                x_sm = -self.Lx/2. - self.b/2.
+                x_sm = -self.Lx/2.
                 y_sm = -self.Ly/2. + self.b/2.
 
             ### Loop through all atoms in the current (mth) atomic layer
@@ -198,18 +199,60 @@ class SiGe_Quantum_Dot:
 ### Testing
 if True:
 
-    n_bar = 0.1
-    n_well = 0.1
-    LX = 50. * 10.
-    LY = 50. * 10.
+    n_bar = 0.3
+    n_well = 0.0
+    LX = 40. * 10.
+    LY = 40. * 10.
     N_bar = 20
     N_well = 72
-    N_intface = 12
+    N_intface = 4
 
     system = SiGe_Quantum_Dot(n_bar,LX,LY)
     #Ge_Conc_Arr = system.Ge_Profile.uniform_profile(N_bar,N_well,n_bar,n_well,PLOT = False)
-    Ge_Conc_Arr = system.Ge_Profile.uniform_profile_gradedInterface(N_bar,N_well,N_intface,n_bar,n_well,PLOT = True)
+    Ge_Conc_Arr = system.Ge_Profile.uniform_profile_gradedInterface(N_bar,N_well,N_intface,n_bar,n_well,PLOT = False)
     system.set_Ge_conc_arr(Ge_Conc_Arr,alloy_seed = 104959)
     print(system.N_sites)
     plt.scatter(np.arange(system.Nz),system.conc_arr)
+    #plt.show()
+    plt.close()
+
+
+    ### Plotting the atoms in a given layer
+    layer_idx = 6
+    Nx = system.Nx; Ny = system.Ny
+    idx_i = Nx*Ny*layer_idx
+    idx_f = Nx*Ny*(layer_idx + 1)
+    X = system.pos_arr[idx_i:idx_f,0]
+    Y = system.pos_arr[idx_i:idx_f,1]
+    Z = system.atom_type_arr[idx_i:idx_f]
+    idx_i = Nx*Ny*(layer_idx + 1)
+    idx_f = Nx*Ny*(layer_idx + 2)
+    X2 = system.pos_arr[idx_i:idx_f,0]
+    Y2 = system.pos_arr[idx_i:idx_f,1]
+    Z2 = system.atom_type_arr[idx_i:idx_f]
+    idx_i = Nx*Ny*(layer_idx + 2)
+    idx_f = Nx*Ny*(layer_idx + 3)
+    X3 = system.pos_arr[idx_i:idx_f,0]
+    Y3 = system.pos_arr[idx_i:idx_f,1]
+    Z3 = system.atom_type_arr[idx_i:idx_f]
+    idx_i = Nx*Ny*(layer_idx + 3)
+    idx_f = Nx*Ny*(layer_idx + 4)
+    X4 = system.pos_arr[idx_i:idx_f,0]
+    Y4 = system.pos_arr[idx_i:idx_f,1]
+    Z4 = system.atom_type_arr[idx_i:idx_f]
+    plt.scatter(X,Y,c = Z,cmap = 'bwr')
+    plt.scatter(X2,Y2,c = Z2,cmap = 'bwr')
+    #plt.scatter(X3,Y3,c = Z3,cmap = 'bwr')
+    #plt.scatter(X4,Y4,c = Z4,cmap = 'bwr')
+    #plt.show()
+    plt.close()
+
+
+    ### Plotting an atom and its nearest neighbors
+    idx = 2*system.N_layer + (system.Nx-3)
+    neighbors = system.near_neig_arr[idx]
+    fig = plt.figure()
+    ax = fig.add_subplot(projection='3d')
+    ax.scatter3D(system.pos_arr[idx,0],system.pos_arr[idx,1],system.pos_arr[idx,2],c = 'k')
+    ax.scatter3D(system.pos_arr[neighbors,0],system.pos_arr[neighbors,1],system.pos_arr[neighbors,2],c = 'r')
     plt.show()
