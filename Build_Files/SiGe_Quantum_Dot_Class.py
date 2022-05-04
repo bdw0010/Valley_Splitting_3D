@@ -199,8 +199,8 @@ class SiGe_Quantum_Dot:
 ### Testing
 if True:
 
-    n_bar = 0.3
-    n_well = 0.0
+    n_bar = 0.0001
+    n_well = 0.0001
     LX = 40. * 10.
     LY = 40. * 10.
     N_bar = 20
@@ -210,11 +210,11 @@ if True:
     system = SiGe_Quantum_Dot(n_bar,LX,LY)
     #Ge_Conc_Arr = system.Ge_Profile.uniform_profile(N_bar,N_well,n_bar,n_well,PLOT = False)
     Ge_Conc_Arr = system.Ge_Profile.uniform_profile_gradedInterface(N_bar,N_well,N_intface,n_bar,n_well,PLOT = False)
-    system.set_Ge_conc_arr(Ge_Conc_Arr,alloy_seed = 104959)
+    system.set_Ge_conc_arr(Ge_Conc_Arr,alloy_seed = 1042359)
     print(system.N_sites)
     plt.scatter(np.arange(system.Nz),system.conc_arr)
-    #plt.show()
-    plt.close()
+    plt.show()
+    #plt.close()
 
 
     ### Plotting the atoms in a given layer
@@ -244,7 +244,7 @@ if True:
     plt.scatter(X2,Y2,c = Z2,cmap = 'bwr')
     #plt.scatter(X3,Y3,c = Z3,cmap = 'bwr')
     #plt.scatter(X4,Y4,c = Z4,cmap = 'bwr')
-    #plt.show()
+    plt.show()
     plt.close()
 
 
