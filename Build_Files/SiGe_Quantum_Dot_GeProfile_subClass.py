@@ -28,6 +28,28 @@ class GeProfile_subObject:
 
         return Ge_conc_arr
 
+    def uniform_profile_gradedInterface(self,N_bar,N_well,N_intface,xGe_bar,xGe_well,PLOT = False):
+        ### Generates a Ge_arr_Full with N_bar atomic layers in the barriers
+        ### and N_well atomic layers in the well region.
+        ###     * The concentrations are constant in the two regions
+        ###     * There are interface regions between the constant Ge regions where the Ge concentration
+        ###       varies linearly
+
+        Ge_conc_arr = np.zeros(2*N_bar+N_well + 2*N_intface)
+        Ge_conc_arr[:N_bar] = xGe_bar
+        Ge_conc_arr[-N_bar:] = xGe_bar
+        Ge_conc_arr[N_bar+N_intface:N_bar+N_intface+N_well] = xGe_well
+
+        step = (xGe_bar - xGe_well)/(N_intface+1.)
+        for i in range(N_intface):
+            Ge_conc_arr[N_bar+i] = xGe_bar - (i+1)*step
+            Ge_conc_arr[N_bar+N_intface+N_well+i] = xGe_well + (i+1)*step
+
+        if PLOT == True:
+            self.plot_profile(Ge_conc_arr)
+
+        return Ge_conc_arr    
+
 
     def plot_profile(self,Ge_conc_arr,z_arr = -1):
         ### Plot the Germanium profile with nice labels and such

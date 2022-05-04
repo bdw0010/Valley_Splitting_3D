@@ -34,10 +34,11 @@ class SiGe_Quantum_Dot:
         self.Ge_Profile = SGQDGPSC.GeProfile_subObject(self)
 
 
-    def set_Ge_conc_arr(self,Ge_conc_arr):
+    def set_Ge_conc_arr(self,Ge_conc_arr,alloy_seed = -1):
         self.Ge_conc_arr = Ge_conc_arr
         self.generate_position_array()
         self.generate_neighbor_array()
+        self.generate_atom_type_array(alloy_seed = alloy_seed)
 
     def generate_position_array(self):
         ### Generates the position array that specifies the position of
@@ -171,19 +172,44 @@ class SiGe_Quantum_Dot:
                 nna[idx,1] = nna[idx,1] - self.N_sites
         self.near_neig_arr = nna[:,:]
 
+    def generate_atom_type_array(self,alloy_seed = -1):
+        ### Generates the atom type array
+        ###     atom_type_arr[idx] == 0 indicates Si and atom_type_arr[idx] == 1 indicates Ge
+
+        if alloy_seed != -1:
+            np.random.seed(alloy_seed)
+
+        Nx = self.Nx; Ny = self.Ny; Nlay = self.N_layer; Nz = self.Nz
+        self.atom_type_arr = np.zeros(Nx*Ny*Nz,dtype = 'int')
+        self.conc_arr = np.zeros(Nz)
+        for m in range(Nz):
+            idx_m = m*Nlay
+            nGe_m = self.Ge_conc_arr[m]
+            rand_arr = np.random.rand(Nlay) # random floats from (0,1)
+            counter = 0                     # counter to count the number of Ge atoms in the mth layer
+            for i in range(Nlay):
+                if rand_arr[i] < nGe_m:
+                    self.atom_type_arr[idx_m + i] = 1 # indicates a Ge atom
+                    counter += 1
+            self.conc_arr[m] = float(counter)/(Nlay)
+
 
 
 ### Testing
 if True:
 
-    n_bar = .3
-    n_well = 0.
-    LX = 40. * 10.
-    LY = 40. * 10.
+    n_bar = 0.1
+    n_well = 0.1
+    LX = 50. * 10.
+    LY = 50. * 10.
     N_bar = 20
     N_well = 72
+    N_intface = 12
 
     system = SiGe_Quantum_Dot(n_bar,LX,LY)
-    Ge_Conc_Arr = system.Ge_Profile.uniform_profile(N_bar,N_well,n_bar,n_well,PLOT = True)
-    system.set_Ge_conc_arr(Ge_Conc_Arr)
+    #Ge_Conc_Arr = system.Ge_Profile.uniform_profile(N_bar,N_well,n_bar,n_well,PLOT = False)
+    Ge_Conc_Arr = system.Ge_Profile.uniform_profile_gradedInterface(N_bar,N_well,N_intface,n_bar,n_well,PLOT = True)
+    system.set_Ge_conc_arr(Ge_Conc_Arr,alloy_seed = 104959)
     print(system.N_sites)
+    plt.scatter(np.arange(system.Nz),system.conc_arr)
+    plt.show()
