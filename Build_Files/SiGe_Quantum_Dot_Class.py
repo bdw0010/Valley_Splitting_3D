@@ -39,6 +39,7 @@ class SiGe_Quantum_Dot:
         self.Ge_conc_arr = Ge_conc_arr
         self.generate_position_array()
         self.generate_neighbor_array()
+        self.generate_neighbor_cosine_array()
         self.generate_atom_type_array(alloy_seed = alloy_seed)
 
     def generate_position_array(self):
@@ -70,6 +71,7 @@ class SiGe_Quantum_Dot:
 
         self.pos_arr = np.zeros((self.N_sites,3)) # position array
         z_arr = z_arr_gen(self.a_par,Ge_conc_arr) # z-coordinate array of all of the atomic layers
+        self.Lz = z_arr[-1] - z_arr[0] + (z_arr[1] - z_arr[0])
         for m in range(Nz):
             zm = z_arr[m]
             idx_m = (Nx*Ny)*m # starting atom index of the current (mth) layer
@@ -105,6 +107,7 @@ class SiGe_Quantum_Dot:
 
         Nx = self.Nx; Ny = self.Ny; Nlay = self.N_layer; Nz = self.Nz
         nna = np.zeros((Nx*Ny*Nz,4),dtype = 'int') # nna stands for nearest_neighbor_array
+
 
         ### Loop through all of the atoms
         for m in range(Nz):
@@ -146,7 +149,7 @@ class SiGe_Quantum_Dot:
                             nna[idx,1] = idx + Nlay + 1
                         nna[idx,2] = idx - Nlay
                         if j == Ny - 1:
-                            nna[idx,3] = idx - Nlay + (Ny - 1)*Nx
+                            nna[idx,3] = idx - Nlay - (Ny - 1)*Nx
                         else:
                             nna[idx,3] = idx - Nlay + Nx
 
@@ -194,15 +197,71 @@ class SiGe_Quantum_Dot:
                     counter += 1
             self.conc_arr[m] = float(counter)/(Nlay)
 
+    def generate_neighbor_cosine_array(self):
+        ### Generates an array which contains the directional cosines and bond distance between an atom and
+        ### its nearest neighbors
+        ###     * cosines_arr[idx,j,:3] = contains the directionsal cosines of the vector
+        ###       going from the atom idx to its jth nearest neighbor
+        ###     * cosines_arr[idx,j,3] = contains the distance of the vector
+        ###       going from the atom idx to its jth nearest neighbor
 
+        nna = self.near_neig_arr # nna stands for nearest_neighbor_array
+        N_tot = nna.shape[0] # total number of atoms in the system
+        cosines_arr = np.zeros((N_tot,4,4),dtype = 'float')
+        pos_arr = self.pos_arr
+        d_o = 2.35169 # unstrained bond distance of Si
+        a = 5.430     # unstrained lattice constant of Si
+
+        print(N_tot)
+        ### Loop through all atoms in the system
+        for i in range(N_tot):
+            pos_i = pos_arr[i] # position of atom i
+            if i % 100000 == 0:
+                print(N_tot - i)
+
+            ### Loop through all of the atom i's nearest neighbors
+            for j in range(4):
+                pos_j = pos_arr[nna[i,j]] # postion of atom i's jth nearest neighbor
+                r_ji = pos_j - pos_i # vector connecting the two atoms
+                d_ji = np.linalg.norm(r_ji) # distance between atoms
+
+                if d_ji < (1.5*d_o): # condition for a "regular" nearest neighbor (ie its doesn't wrap around the system)
+                    cosines_arr[i,j,:3] = r_ji * (1./d_ji)
+                    cosines_arr[i,j,3] = d_ji
+                else: # the neighbors wrap around the periodic boundaries
+
+                    ### checking for wrapping in the x-direction
+                    if r_ji[0] > (3*a/8):
+                        r_ji[0] = r_ji[0] - self.Lx
+                    elif r_ji[0] < (-3*a/8):
+                        r_ji[0] = r_ji[0] + self.Lx
+
+                    ### checking for wrapping in the y-direction
+                    if r_ji[1] > (3*a/8):
+                        r_ji[1] = r_ji[1] - self.Ly
+                    elif r_ji[1] < (-3*a/8):
+                        r_ji[1] = r_ji[1] + self.Ly
+
+                    ### checking for wrapping in the z-direction
+                    if r_ji[2] > (3*a/8):
+                        r_ji[2] = r_ji[2] - self.Lz
+                    elif r_ji[2] < (-3*a/8):
+                        r_ji[2] = r_ji[2] + self.Lz
+
+                    d_ji = np.linalg.norm(r_ji) # distance between atoms once wrapping is taken into account
+                    if d_ji > (1.5*d_o):
+                        print("Error!", r_ji)
+                    cosines_arr[i,j,:3] = r_ji * (1./d_ji)
+                    cosines_arr[i,j,3] = d_ji
+        self.cosines_arr = cosines_arr[:,:,:]
 
 ### Testing
 if True:
 
-    n_bar = 0.0001
-    n_well = 0.0001
-    LX = 40. * 10.
-    LY = 40. * 10.
+    n_bar = 0.3
+    n_well = 0.01
+    LX = 20. * 10.
+    LY = 20. * 10.
     N_bar = 20
     N_well = 72
     N_intface = 4
@@ -250,6 +309,11 @@ if True:
 
     ### Plotting an atom and its nearest neighbors
     idx = 2*system.N_layer + (system.Nx-3)
+    idx = (N_bar + 5)*system.N_layer + (system.Nx-1)
+    idx = (N_bar + 5)*system.N_layer - 1
+    #idx = 0
+    idx = 28562
+    print(system.cosines_arr[idx])
     neighbors = system.near_neig_arr[idx]
     fig = plt.figure()
     ax = fig.add_subplot(projection='3d')
