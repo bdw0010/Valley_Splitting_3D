@@ -13,6 +13,7 @@ import scipy.sparse as Spar
 import scipy.sparse.linalg as SparLinalg
 import Lattice_Constant_Funcs as LCF
 import SiGe_Quantum_Dot_GeProfile_subClass as SGQDGPSC
+import SiGe_Quantum_Dot_HamGen_subClass as SGQDHGSC
 np.set_printoptions(linewidth = 500)
 
 class SiGe_Quantum_Dot:
@@ -34,6 +35,8 @@ class SiGe_Quantum_Dot:
         ### Sub object to handle the generation of Ge profile
         self.Ge_Profile = SGQDGPSC.GeProfile_subObject(self)
 
+        ### Sub object to handle the generation of the Hamiltonian
+        self.HAM = SGQDHGSC.SiGe_Quantum_Dot_Ham(self)
 
     def set_Ge_conc_arr(self,Ge_conc_arr,alloy_seed = -1):
         self.Ge_conc_arr = Ge_conc_arr
@@ -209,15 +212,15 @@ class SiGe_Quantum_Dot:
         N_tot = nna.shape[0] # total number of atoms in the system
         cosines_arr = np.zeros((N_tot,4,4),dtype = 'float')
         pos_arr = self.pos_arr
-        d_o = 2.35169 # unstrained bond distance of Si
-        a = 5.430     # unstrained lattice constant of Si
+        a = 5.431     # unstrained lattice constant of Si
+        d_o = np.sqrt(3.*a**2/16.) # unstrained bond distance of Si
 
-        print(N_tot)
+        #print(N_tot)
         ### Loop through all atoms in the system
         for i in range(N_tot):
             pos_i = pos_arr[i] # position of atom i
-            if i % 100000 == 0:
-                print(N_tot - i)
+            #if i % 100000 == 0:
+            #    print(N_tot - i)
 
             ### Loop through all of the atom i's nearest neighbors
             for j in range(4):
@@ -259,7 +262,7 @@ class SiGe_Quantum_Dot:
 if True:
 
     n_bar = 0.3
-    n_well = 0.01
+    n_well = 0.00
     LX = 20. * 10.
     LY = 20. * 10.
     N_bar = 20
@@ -270,11 +273,12 @@ if True:
     #Ge_Conc_Arr = system.Ge_Profile.uniform_profile(N_bar,N_well,n_bar,n_well,PLOT = False)
     Ge_Conc_Arr = system.Ge_Profile.uniform_profile_gradedInterface(N_bar,N_well,N_intface,n_bar,n_well,PLOT = False)
     system.set_Ge_conc_arr(Ge_Conc_Arr,alloy_seed = 1042359)
-    print(system.N_sites)
+    #print(system.N_sites)
     plt.scatter(np.arange(system.Nz),system.conc_arr)
     plt.show()
-    #plt.close()
 
+    H_onsite = system.HAM.intraAtomic_Ham_gen()
+    sys.exit()
 
     ### Plotting the atoms in a given layer
     layer_idx = 6

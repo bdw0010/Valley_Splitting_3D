@@ -22,11 +22,229 @@ class SiGe_Quantum_Dot_Ham:
         ###     * Uses a sp3s* basis to reduce the size of the resulting matrix
         ###     * Primarily used for testing the tight binding code in a simplified
         ###       system
+        pass
 
+    def intraAtomic_Ham_gen(self):
+        ### Generates the onsite component (intra-atomic) of the Hamiltonian
+        ### in the absence of any potential
+        ###     * Excluded spin-orbit coupling
+        ###     * Using the sp3d5s* basis with orbital ordering {s,s*,px,py,pz,yz,xz,xy,x2my2,z2}
 
+        ### parameters
+        if True:
+            a_Si = 5.431; a_Ge = 5.6563
+            dSi_o = np.sqrt(3.*a_Si**2/16.) # unstrained bond distance of Si
+            dGe_o = np.sqrt(3.*a_Ge**2/16.) # unstrained bond distance of Si
 
+            ### Bare orbital energies
+            Es_Si = -2.55247
+            Ep_Si = 4.48593
+            Ed_Si = 14.01053
+            Es2_Si = 23.44607
 
+            E_offset = 0.68
+            Es_Ge = -4.08253 + E_offset
+            Ep_Ge = 4.63470 + E_offset
+            Ed_Ge = 12.19526 + E_offset
+            Es2_Ge = 23.20167 + E_offset
 
+            ### Strain parameters
+            alp_s_Si = -0.13357
+            alp_p_Si = -0.18953
+            alp_d_Si = -0.89046
+            alp_s2_Si = -0.24373
+            beta_p0_Si = 1.13646
+            beta_p1_Si = -2.76257
+            beta_pd0_Si = -0.13011
+            beta_pd1_Si = -3.28537
+            beta_d0_Si = 3.59603
+            beta_sp0_Si = 1.97665
+            beta_s2p0_Si = -2.18403
+            beta_sd0_Si = 3.06840
+            beta_s2d0_Si = -4.95860
+
+            alp_s_Ge = -0.33252
+            alp_p_Ge = -0.43824
+            alp_d_Ge = -0.90486
+            alp_s2_Ge = -0.52062
+            beta_p0_Ge = 1.01233
+            beta_p1_Ge = -2.53951
+            beta_pd0_Ge = -0.22597
+            beta_pd1_Ge = -3.77180
+            beta_d0_Ge = 1.99217
+            beta_sp0_Ge = 1.27627
+            beta_s2p0_Ge = -2.02374
+            beta_sd0_Ge = 2.38822
+            beta_s2d0_Ge = -4.73191
+
+        row = []; col = []; data = []
+        ### Loop through the layers in the system
+        for m in range(self.QD_obj.Nz):
+            idx_m = m*self.QD_obj.N_layer
+            cosines = self.QD_obj.cosines_arr[idx_m,:,:]
+
+            ### Calculate the hydrostatic strain
+            hs_Si_m = 0.75*(np.sum(cosines[:,3])/dSi_o - 4)
+            hs_Ge_m = 0.75*(np.sum(cosines[:,3])/dGe_o - 4)
+            #print(self.QD_obj.Nz - m,hs_Si_m,hs_Ge_m)
+
+            ### Calculate the onsite energy of s and s* orbitals
+            Es_Si_m = Es_Si + alp_s_Si*hs_Si_m
+            Es2_Si_m = Es2_Si + alp_s2_Si*hs_Si_m
+            Es_Ge_m = Es_Ge + alp_s_Ge*hs_Ge_m
+            Es2_Ge_m = Es2_Ge + alp_s2_Ge*hs_Ge_m
+
+            ### calculate the onsite energy of p orbitals
+            Ep_Si_m = np.ones(3)*(Ep_Si + alp_p_Si*hs_Si_m)
+            Ep_Ge_m = np.ones(3)*(Ep_Ge + alp_p_Ge*hs_Ge_m)
+            for j in range(4):
+                dj_ratio_Si = (cosines[j,3] - dSi_o)/dSi_o
+                dj_ratio_Ge = (cosines[j,3] - dGe_o)/dGe_o
+                beta_Si_j = beta_p0_Si + beta_p1_Si*dj_ratio_Si
+                beta_Ge_j = beta_p0_Ge + beta_p1_Ge*dj_ratio_Ge
+                for l in range(3):
+                    Ep_Si_m[l] += beta_Si_j*(cosines[j,l]**2 - 1./3.)
+                    Ep_Ge_m[l] += beta_Ge_j*(cosines[j,l]**2 - 1./3.)
+
+            ### calculate the ontie terms between d orbitals
+            Ed_Si_m = np.ones(5)*(Ed_Si + alp_d_Si*hs_Si_m)
+            Ed_Ge_m = np.ones(5)*(Ed_Ge + alp_d_Ge*hs_Ge_m)
+            Ed_Si_m[0] += beta_d0_Si*(np.sum(np.square(cosines[:,0])) - 4./3.)
+            Ed_Si_m[1] += beta_d0_Si*(np.sum(np.square(cosines[:,1])) - 4./3.)
+            Ed_Si_m[2] += beta_d0_Si*(np.sum(np.square(cosines[:,2])) - 4./3.)
+            Ed_Si_m[3] += beta_d0_Si*(np.sum(np.square(cosines[:,2])) - 4./3.)
+            Ed_Si_m[4] -= beta_d0_Si*(np.sum(np.square(cosines[:,2])) - 4./3.)
+            Ed_Ge_m[0] += beta_d0_Ge*(np.sum(np.square(cosines[:,0])) - 4./3.)
+            Ed_Ge_m[1] += beta_d0_Ge*(np.sum(np.square(cosines[:,1])) - 4./3.)
+            Ed_Ge_m[2] += beta_d0_Ge*(np.sum(np.square(cosines[:,2])) - 4./3.)
+            Ed_Ge_m[3] += beta_d0_Ge*(np.sum(np.square(cosines[:,2])) - 4./3.)
+            Ed_Ge_m[4] -= beta_d0_Ge*(np.sum(np.square(cosines[:,2])) - 4./3.)
+            E_x2my2_z2_Si_m = np.sqrt(1./3.)*beta_d0_Si*np.sum(np.square(cosines[:,0]) - np.square(cosines[:,1]))
+            E_x2my2_z2_Ge_m = np.sqrt(1./3.)*beta_d0_Ge*np.sum(np.square(cosines[:,0]) - np.square(cosines[:,1]))
+
+            ### calculate the onsite coupling between s and pz orbitals
+            E_s_pz_Si_m = beta_sp0_Si*np.sum(cosines[:,2])
+            E_s_pz_Ge_m = beta_sp0_Ge*np.sum(cosines[:,2])
+            E_s2_pz_Si_m = beta_s2p0_Si*np.sum(cosines[:,2])
+            E_s2_pz_Ge_m = beta_s2p0_Ge*np.sum(cosines[:,2])
+
+            ### calculate the onsite coupling between s and d orbitals
+            E_s_x2my2_Si_m = 0.5 * beta_sd0_Si * np.sum(np.square(cosines[:,0]) - np.square(cosines[:,1]))
+            E_s_x2my2_Ge_m = 0.5 * beta_sd0_Ge * np.sum(np.square(cosines[:,0]) - np.square(cosines[:,1]))
+            E_s_z2_Si_m = (1./(2*np.sqrt(3))) * beta_sd0_Si * (np.sum(np.square(cosines[:,2])) - 4)
+            E_s_z2_Ge_m = (1./(2*np.sqrt(3))) * beta_sd0_Ge * (np.sum(np.square(cosines[:,2])) - 4)
+            E_s2_x2my2_Si_m = 0.5 * beta_s2d0_Si * np.sum(np.square(cosines[:,0]) - np.square(cosines[:,1]))
+            E_s2_x2my2_Ge_m = 0.5 * beta_s2d0_Ge * np.sum(np.square(cosines[:,0]) - np.square(cosines[:,1]))
+            E_s2_z2_Si_m = (1./(2*np.sqrt(3))) * beta_s2d0_Si * (np.sum(np.square(cosines[:,2])) - 4)
+            E_s2_z2_Ge_m = (1./(2*np.sqrt(3))) * beta_s2d0_Ge * (np.sum(np.square(cosines[:,2])) - 4)
+
+            ### calcualte the onsite coupling between p and d orbitals
+            E_px_xz_Si_m = beta_pd0_Si * np.sum(cosines[:,2])
+            for j in range(4):
+                dj_ratio_Si = (cosines[j,3] - dSi_o)/dSi_o
+                E_px_xz_Si_m += beta_pd1_Si * dj_ratio_Si * cosines[j,2]
+            E_py_yz_Si_m = 1.*E_px_xz_Si_m
+            E_pz_z2_Si_m = (2./np.sqrt(3.))*E_px_xz_Si_m
+            E_px_xz_Ge_m = beta_pd0_Ge * np.sum(cosines[:,2])
+            for j in range(4):
+                dj_ratio_Ge = (cosines[j,3] - dGe_o)/dGe_o
+                E_px_xz_Ge_m += beta_pd1_Ge * dj_ratio_Ge * cosines[j,2]
+            E_py_yz_Ge_m = 1.*E_px_xz_Ge_m
+            E_pz_z2_Ge_m = (2./np.sqrt(3.))*E_px_xz_Ge_m
+
+            print(m,E_x2my2_z2_Si_m)
+
+            ### Loop thorugh all of the atoms in layer m
+            N_orb = 10 # number of orbitals per atom
+            for i in range(self.QD_obj.N_layer):
+                idx_mi = idx_m + i          # atom index
+                idx_orb = idx_mi * N_orb    # starting orbital index
+                if self.QD_obj.atom_type_arr[idx_mi] == 0: # Si atom
+
+                    ### Diagonal terms
+                    row.append(idx_orb + 0); col.append(idx_orb + 0); data.append(Es_Si_m)
+                    row.append(idx_orb + 1); col.append(idx_orb + 1); data.append(Es2_Si_m)
+                    row.append(idx_orb + 2); col.append(idx_orb + 2); data.append(Ep_Si_m[0])
+                    row.append(idx_orb + 3); col.append(idx_orb + 3); data.append(Ep_Si_m[1])
+                    row.append(idx_orb + 4); col.append(idx_orb + 4); data.append(Ep_Si_m[2])
+                    row.append(idx_orb + 5); col.append(idx_orb + 5); data.append(Ed_Si_m[0])
+                    row.append(idx_orb + 6); col.append(idx_orb + 6); data.append(Ed_Si_m[1])
+                    row.append(idx_orb + 7); col.append(idx_orb + 7); data.append(Ed_Si_m[2])
+                    row.append(idx_orb + 8); col.append(idx_orb + 8); data.append(Ed_Si_m[3])
+                    row.append(idx_orb + 9); col.append(idx_orb + 9); data.append(Ed_Si_m[4])
+
+                    ### s-p terms
+                    row.append(idx_orb + 0); col.append(idx_orb + 4); data.append(E_s_pz_Si_m)
+                    col.append(idx_orb + 0); row.append(idx_orb + 4); data.append(E_s_pz_Si_m)
+                    row.append(idx_orb + 1); col.append(idx_orb + 4); data.append(E_s2_pz_Si_m)
+                    col.append(idx_orb + 1); row.append(idx_orb + 4); data.append(E_s2_pz_Si_m)
+
+                    ### s-d terms
+                    row.append(idx_orb + 0); col.append(idx_orb + 8); data.append(E_s_x2my2_Si_m)
+                    col.append(idx_orb + 0); row.append(idx_orb + 8); data.append(E_s_x2my2_Si_m)
+                    row.append(idx_orb + 1); col.append(idx_orb + 8); data.append(E_s2_x2my2_Si_m)
+                    col.append(idx_orb + 1); row.append(idx_orb + 8); data.append(E_s2_x2my2_Si_m)
+                    row.append(idx_orb + 0); col.append(idx_orb + 9); data.append(E_s_z2_Si_m)
+                    col.append(idx_orb + 0); row.append(idx_orb + 9); data.append(E_s_z2_Si_m)
+                    row.append(idx_orb + 1); col.append(idx_orb + 9); data.append(E_s2_z2_Si_m)
+                    col.append(idx_orb + 1); row.append(idx_orb + 9); data.append(E_s2_z2_Si_m)
+
+                    ### p-d terms
+                    row.append(idx_orb + 2); col.append(idx_orb + 6); data.append(E_px_xz_Si_m)
+                    col.append(idx_orb + 2); row.append(idx_orb + 6); data.append(E_px_xz_Si_m)
+                    row.append(idx_orb + 3); col.append(idx_orb + 5); data.append(E_py_yz_Si_m)
+                    col.append(idx_orb + 3); row.append(idx_orb + 5); data.append(E_py_yz_Si_m)
+                    row.append(idx_orb + 4); col.append(idx_orb + 9); data.append(E_pz_z2_Si_m)
+                    col.append(idx_orb + 4); row.append(idx_orb + 9); data.append(E_pz_z2_Si_m)
+
+                    ### d-d terms
+                    row.append(idx_orb + 8); col.append(idx_orb + 9); data.append(E_x2my2_z2_Si_m)
+                    col.append(idx_orb + 8); row.append(idx_orb + 9); data.append(E_x2my2_z2_Si_m)
+
+                elif self.QD_obj.atom_type_arr[idx_mi] == 1: # Ge atom
+
+                    ### Diagonal terms
+                    row.append(idx_orb + 0); col.append(idx_orb + 0); data.append(Es_Ge_m)
+                    row.append(idx_orb + 1); col.append(idx_orb + 1); data.append(Es2_Ge_m)
+                    row.append(idx_orb + 2); col.append(idx_orb + 2); data.append(Ep_Ge_m[0])
+                    row.append(idx_orb + 3); col.append(idx_orb + 3); data.append(Ep_Ge_m[1])
+                    row.append(idx_orb + 4); col.append(idx_orb + 4); data.append(Ep_Ge_m[2])
+                    row.append(idx_orb + 5); col.append(idx_orb + 5); data.append(Ed_Ge_m[0])
+                    row.append(idx_orb + 6); col.append(idx_orb + 6); data.append(Ed_Ge_m[1])
+                    row.append(idx_orb + 7); col.append(idx_orb + 7); data.append(Ed_Ge_m[2])
+                    row.append(idx_orb + 8); col.append(idx_orb + 8); data.append(Ed_Ge_m[3])
+                    row.append(idx_orb + 9); col.append(idx_orb + 9); data.append(Ed_Ge_m[4])
+
+                    ### s-p terms
+                    row.append(idx_orb + 0); col.append(idx_orb + 4); data.append(E_s_pz_Ge_m)
+                    col.append(idx_orb + 0); row.append(idx_orb + 4); data.append(E_s_pz_Ge_m)
+                    row.append(idx_orb + 1); col.append(idx_orb + 4); data.append(E_s2_pz_Ge_m)
+                    col.append(idx_orb + 1); row.append(idx_orb + 4); data.append(E_s2_pz_Ge_m)
+
+                    ### s-d terms
+                    row.append(idx_orb + 0); col.append(idx_orb + 8); data.append(E_s_x2my2_Ge_m)
+                    col.append(idx_orb + 0); row.append(idx_orb + 8); data.append(E_s_x2my2_Ge_m)
+                    row.append(idx_orb + 1); col.append(idx_orb + 8); data.append(E_s2_x2my2_Ge_m)
+                    col.append(idx_orb + 1); row.append(idx_orb + 8); data.append(E_s2_x2my2_Ge_m)
+                    row.append(idx_orb + 0); col.append(idx_orb + 9); data.append(E_s_z2_Ge_m)
+                    col.append(idx_orb + 0); row.append(idx_orb + 9); data.append(E_s_z2_Ge_m)
+                    row.append(idx_orb + 1); col.append(idx_orb + 9); data.append(E_s2_z2_Ge_m)
+                    col.append(idx_orb + 1); row.append(idx_orb + 9); data.append(E_s2_z2_Ge_m)
+
+                    ### p-d terms
+                    row.append(idx_orb + 2); col.append(idx_orb + 6); data.append(E_px_xz_Ge_m)
+                    col.append(idx_orb + 2); row.append(idx_orb + 6); data.append(E_px_xz_Ge_m)
+                    row.append(idx_orb + 3); col.append(idx_orb + 5); data.append(E_py_yz_Ge_m)
+                    col.append(idx_orb + 3); row.append(idx_orb + 5); data.append(E_py_yz_Ge_m)
+                    row.append(idx_orb + 4); col.append(idx_orb + 9); data.append(E_pz_z2_Ge_m)
+                    col.append(idx_orb + 4); row.append(idx_orb + 9); data.append(E_pz_z2_Ge_m)
+
+                    ### d-d terms
+                    row.append(idx_orb + 8); col.append(idx_orb + 9); data.append(E_x2my2_z2_Ge_m)
+                    col.append(idx_orb + 8); row.append(idx_orb + 9); data.append(E_x2my2_z2_Ge_m)
+
+        Ham_onsite = Spar.csc_matrix((data,(row,col)), shape=(N_orb*self.QD_obj.N_sites, N_orb*self.QD_obj.N_sites))
+        return Ham_onsite
 
 def calc_interatomic_mtx_element_Si_Si(α,β,l,m,n,d):
     ### Calculates the interatomic matrix element between the
@@ -366,7 +584,6 @@ def calc_interatomic_mtx_element_Si_Si(α,β,l,m,n,d):
         print("Error! α")
 
     return mtx_elem
-
 
 def calc_interatomic_mtx_element_Si_Si_Vogl(α,β,l,m,n,d):
     ### Calculates the interatomic matrix element between the

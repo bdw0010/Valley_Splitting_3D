@@ -5,7 +5,7 @@
 import numpy as np
 
 def calc_relaxed_lat_constant(x):
-    a_Si = 5.430
+    a_Si = 5.431
     a_Ge = 5.6563
     a_relaxed = (1 - x) * a_Si + x * a_Ge
     return a_relaxed
